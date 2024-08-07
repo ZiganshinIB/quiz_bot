@@ -1,6 +1,7 @@
 import redis
 import os
 import re
+import argparse
 from abc import ABC, abstractmethod
 
 from dotenv import load_dotenv
@@ -85,8 +86,9 @@ class Quiz:
         :return: None
         """
         for file_name in os.listdir(directory_name):
-            full_path = os.path.join(directory_name, file_name)
-            self.add_questions_from_file(full_path, encoding=encoding, format_strategy=format_strategy)
+            if not os.path.isfile(os.path.join(directory_name, file_name)):
+                full_path = os.path.join(directory_name, file_name)
+                self.add_questions_from_file(full_path, encoding=encoding, format_strategy=format_strategy)
 
     def get_question_answer(self, question):
         return str(self.redis_db.get(question), 'utf-8')
@@ -99,10 +101,24 @@ class Quiz:
         return fs
 
 
-
 if __name__ == '__main__':
     load_dotenv()
     # Connect to DB
     db = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
     questions = Quiz(db)
-    questions.add_questions_from_directory('temp')
+    parser = argparse.ArgumentParser(
+        description='Работа с базой данных с вопросами. \n Добавляет вопросы из файла или директории.\n'
+                    'Необходимо указать параметр -f (иммеет приоритет выше) или -d для запуска'
+    )
+    parser.add_argument('-f', '--file', type=str, help='Имя файла')
+    parser.add_argument('-d', '--directory', type=str, help='Имя директории')
+    args = parser.parse_args()
+    if args.file:
+        questions.add_questions_from_file(args.file)
+    elif args.directory:
+        questions.add_questions_from_directory(args.directory)
+    else:
+        print("Ошибка: Не указано ни имя файла, ни имя директории.")
+        parser.print_help()
+
+

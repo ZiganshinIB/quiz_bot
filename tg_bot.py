@@ -61,7 +61,7 @@ def handler_give_up(update, context):
 
 def handler_count(update, context):
     """Показывает счет."""
-    count = db_counter.get(update.message.from_user.id)
+    count = str(db_counter.get(update.message.from_user.id), 'utf-8')
     update.message.reply_text(
         f"Счет: {count}",
         parse_mode="HTML",
