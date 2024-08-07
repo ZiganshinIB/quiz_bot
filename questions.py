@@ -86,7 +86,7 @@ class Quiz:
         :return: None
         """
         for file_name in os.listdir(directory_name):
-            if not os.path.isfile(os.path.join(directory_name, file_name)):
+            if os.path.isfile(os.path.join(directory_name, file_name)):
                 full_path = os.path.join(directory_name, file_name)
                 self.add_questions_from_file(full_path, encoding=encoding, format_strategy=format_strategy)
 
