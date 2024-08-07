@@ -1,5 +1,8 @@
 temp/
+redis_data/
 *.sh
+
+
 __pycache__/
 *.py[cod]
 *$py.class

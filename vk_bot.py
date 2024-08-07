@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 from vk_api.keyboard import VkKeyboard
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.utils import get_random_id
+from logger import MyLogsHandler
+
+logger = logging.getLogger(__name__)
 
 
 def get_keyboard():
@@ -37,9 +40,9 @@ def start(event):
     )
 
 
-def send_question(event, questions):
+def send_question(event):
     """Возвращает рандомный вопрос и выдает его пользователю."""
-    question = random.choice(list(questions.keys()))
+    question = questions.get_random_question()
     db_user.set(event.user_id, question)
     return vk_api.messages.send(
         user_id=event.user_id,
@@ -49,10 +52,10 @@ def send_question(event, questions):
     )
 
 
-def check_answer(event, questions):
+def check_answer(event):
     """Проверяет данный пользователем ответ на правильность."""
 
-    if event.text.lower() == questions[str(db_user.get(event.user_id), 'utf-8')].lower():
+    if event.text.lower() == questions.get_question_answer(str(db_user.get(event.user_id), 'utf-8')).lower():
         db_counter.incr(event.user_id)
         return vk_api.messages.send(
             user_id=event.user_id,
@@ -68,15 +71,15 @@ def check_answer(event, questions):
     )
 
 
-def report_correct_answer(event, vk_api, questions):
+def report_correct_answer(event, vk_api):
     """Сообщает пользователю правильный ответ при нажатии на кнопку 'Сдаться'."""
-    answer = questions[str(db_user.get(event.user_id), 'utf-8')]
+    answer = questions.get_question_answer(str(db_user.get(event.user_id), 'utf-8'))
     vk_api.messages.send(
         user_id=event.user_id,
         random_id=get_random_id(),
         message=f"Правильным было: {answer}",
     )
-    send_question(event, questions)
+    send_question(event)
 
 
 def get_number_points(event):
@@ -94,12 +97,16 @@ if __name__ == "__main__":
     # Connect to DB
     db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_USER'))
     db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_COUNTER'))
-    questions.init_all_questions()
-    quizes = questions.quizes
+    db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
 
+    questions = questions.Quiz(db_questions)
     vk_session = vk.VkApi(token=os.getenv("VK_BOT_TOKEN"))
     vk_api = vk_session.get_api()
     longpoll = VkLongPoll(vk_session)
+
+    tg_logger_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+    tg_logger_chat_id = os.getenv('TELEGRAM_BOT_LOGS_CHAT_ID')
+    logger.addHandler(MyLogsHandler(tg_logger_bot_token, tg_logger_chat_id))
 
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
@@ -107,12 +114,14 @@ if __name__ == "__main__":
                 if event.text == "Начать":
                     start(event)
                 elif event.text == "Новый вопрос":
-                    send_question(event, quizes)
+                    send_question(event)
                 elif event.text == "Сдаться":
-                    report_correct_answer(event, vk_api, quizes)
+                    report_correct_answer(event, vk_api)
                 elif event.text == "Мой счёт":
                     get_number_points(event)
                 else:
-                    check_answer(event, quizes)
+                    check_answer(event)
             except Exception as err:
-                print(err)
+                logger.error(
+                    "Бот VK перестал работать: " + str(err),
+                    exc_info=True)
