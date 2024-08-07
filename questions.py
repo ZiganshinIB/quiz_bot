@@ -115,8 +115,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.file:
         questions.add_questions_from_file(args.file)
+        print("Вопросы добавлены.")
     elif args.directory:
         questions.add_questions_from_directory(args.directory)
+        print("Вопросы добавлены.")
     else:
         print("Ошибка: Не указано ни имя файла, ни имя директории.")
         parser.print_help()

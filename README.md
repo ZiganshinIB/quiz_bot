@@ -8,7 +8,7 @@
 ## Запуск проекта
 ### 1. Загрузка на локальное устройство 
 ```shell
-git clon https://github.com/ZiganshinIB/quiz_bot.git
+git clone https://github.com/ZiganshinIB/quiz_bot.git
 cd quiz_bot
 ```
 ### 2. Создание витруального окружение
