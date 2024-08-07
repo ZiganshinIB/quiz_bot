@@ -67,4 +67,7 @@ python tg_bot.py
 python vk_bot.py
 ```
 
+### Просмотреть работу проекта можно
+* [TG](https://t.me/i_quiz_bot)
+* [VK](https://vk.com/im?sel=-226860264)
 
