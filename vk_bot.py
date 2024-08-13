@@ -94,11 +94,9 @@ def get_number_points(event):
 
 if __name__ == "__main__":
     load_dotenv()
-    # Connect to DB
     db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_USER'))
     db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_COUNTER'))
     db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
-
     questions = questions.Quiz(db_questions)
     vk_session = vk.VkApi(token=os.getenv("VK_BOT_TOKEN"))
     vk_api = vk_session.get_api()

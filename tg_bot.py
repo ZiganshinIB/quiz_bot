@@ -81,16 +81,10 @@ def cancel(update, context):
 
 
 def main():
-    # Load environment variables
     tg_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
     tg_log_chat_id = os.getenv('TELEGRAM_BOT_LOGS_CHAT_ID')
-    # Create the Updater and pass it your bot's token.
     updater = Updater(tg_bot_token)
-    # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
-    # Handlers
-
-    # on different commands - answer in Telegram
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -121,10 +115,8 @@ def main():
         fallbacks=[CommandHandler('cancel', cancel)]
     )
 
-    # Add conversation handler
     dispatcher.add_handler(conv_handler)
     logger.addHandler(MyLogsHandler(tg_bot_token, tg_log_chat_id))
-    # Start the Bot
     try:
         updater.start_polling()
         updater.idle()
@@ -136,12 +128,10 @@ def main():
 
 if __name__ == '__main__':
     load_dotenv()
-    # Connect to DB
     db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_USER'))
     db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_COUNTER'))
     db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
     questions = questions.Quiz(db_questions)
-    #
     QUESTIONS = 1
     ANSWER = 2
     main()

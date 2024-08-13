@@ -103,7 +103,6 @@ class Quiz:
 
 if __name__ == '__main__':
     load_dotenv()
-    # Connect to DB
     db = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
     questions = Quiz(db)
     parser = argparse.ArgumentParser(

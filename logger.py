@@ -17,7 +17,6 @@ class MyLogsHandler(logging.Handler):
     def emit(self, record, **kwargs):
         log_entry = self.format(record)
         if record.levelname == 'CRITICAL':
-            # Save log to file or database
             with open('log.log', 'a') as f:
                 f.write(log_entry + '\n')
         try:
