@@ -1,5 +1,4 @@
 import logging
-import random
 import os
 import redis
 import questions
@@ -42,7 +41,7 @@ def start(event):
 
 def send_question(event):
     """Возвращает рандомный вопрос и выдает его пользователю."""
-    question = questions.get_random_question()
+    question = quiz.get_random_question()
     db_user.set(event.user_id, question)
     return vk_api.messages.send(
         user_id=event.user_id,
@@ -55,13 +54,17 @@ def send_question(event):
 def check_answer(event):
     """Проверяет данный пользователем ответ на правильность."""
 
-    if event.text.lower() == questions.get_question_answer(str(db_user.get(event.user_id), 'utf-8')).lower():
+    if event.text.lower() == quiz.get_question_answer(
+            str(db_user.get(event.user_id),
+                'utf-8')).lower():
         db_counter.incr(event.user_id)
+        msg = ("Правильно! Поздравляю! "
+               "Для следующего вопроса нажми «Новый вопрос».")
         return vk_api.messages.send(
             user_id=event.user_id,
             random_id=get_random_id(),
             keyboard=get_keyboard(),
-            message="Правильно! Поздравляю! Для следующего вопроса нажми «Новый вопрос».",
+            message=msg,
         )
     return vk_api.messages.send(
         user_id=event.user_id,
@@ -72,8 +75,11 @@ def check_answer(event):
 
 
 def report_correct_answer(event, vk_api):
-    """Сообщает пользователю правильный ответ при нажатии на кнопку 'Сдаться'."""
-    answer = questions.get_question_answer(str(db_user.get(event.user_id), 'utf-8'))
+    """
+    Сообщает пользователю правильный ответ,
+    при нажатии на кнопку 'Сдаться'.
+    """
+    answer = quiz.get_question_answer(str(db_user.get(event.user_id), 'utf-8'))
     vk_api.messages.send(
         user_id=event.user_id,
         random_id=get_random_id(),
@@ -88,7 +94,8 @@ def get_number_points(event):
         user_id=event.user_id,
         random_id=get_random_id(),
         keyboard=get_keyboard(),
-        message=f"Количество правильных ответов:{str(db_counter.get(event.user_id), 'utf-8')}",
+        message=f"Количество правильных ответов:"
+                f"{str(db_counter.get(event.user_id), 'utf-8')}",
     )
 
 
@@ -97,7 +104,7 @@ if __name__ == "__main__":
     db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_USER'))
     db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_COUNTER'))
     db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
-    questions = questions.Quiz(db_questions)
+    quiz = questions.Quiz(db_questions)
     vk_session = vk.VkApi(token=os.getenv("VK_BOT_TOKEN"))
     vk_api = vk_session.get_api()
     longpoll = VkLongPoll(vk_session)

@@ -1,15 +1,18 @@
 import os
-import random
 import logging
 import questions
-
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
+from telegram.ext import (Updater,
+                          CommandHandler,
+                          MessageHandler,
+                          Filters,
+                          ConversationHandler)
 import redis
 from logger import MyLogsHandler
 
 logger = logging.getLogger(__name__)
+
 
 def get_keyboard():
     """Добавляет кнопки боту."""
@@ -19,47 +22,53 @@ def get_keyboard():
     ])
     return keyboard
 
-def start(update: Update, context: CallbackContext):
+
+def start(update: Update, _):
     """Start the bot."""
     db_counter.set(update.message.from_user.id, 0)
-    update.message.reply_text("Привет! Я бот для викторин! Для начала игры нажми кнопку «Новый вопрос»!",
-                              reply_markup=get_keyboard())
+    msg = ("Привет! Я бот для викторин! "
+           "Для начала игры нажми кнопку «Новый вопрос»!")
+    update.message.reply_text(
+        msg,
+        reply_markup=get_keyboard())
     return QUESTIONS
 
 
-def handler_new_question_request(update: Update, context: CallbackContext):
-    question = questions.get_random_question()
+def handler_new_question_request(update: Update, _):
+    question = quiz.get_random_question()
     db_user.set(update.message.from_user.id, question)
     update.message.reply_text(f"{question}")
     return ANSWER
 
 
-def handler_solution(update, Context):
+def handler_solution(update, _):
     """Проверяет правильность ответа на вопрос."""
-    answer = questions.get_question_answer(db_user.get(update.message.from_user.id))
+    answer = quiz.get_question_answer(db_user.get(update.message.from_user.id))
     if update.message.text.lower() == answer.lower():
         db_counter.incr(update.message.from_user.id)
+        msg = ("Правильно! Поздравляю! "
+               "Для следующего вопроса нажми «Новый вопрос».")
         update.message.reply_text(
-            "Правильно! Поздравляю! Для следующего вопроса нажми «Новый вопрос».",)
+            msg,)
         return QUESTIONS
     update.message.reply_text("Неправильно… Попробуешь ещё раз?", )
     return ANSWER
 
 
-def handler_give_up(update, context):
+def handler_give_up(update, _):
     """Показывает правильный ответ."""
-    answer = questions.get_question_answer(db_user.get(update.message.from_user.id))
+    answer = quiz.get_question_answer(db_user.get(update.message.from_user.id))
     update.message.reply_text(
         f'Правильным было: "{answer}"\n Следующий вопрос',
         parse_mode="HTML",
     )
-    question = questions.get_random_question()
+    question = quiz.get_random_question()
     db_user.set(update.message.from_user.id, question)
     update.message.reply_text(f"{question}")
     return ANSWER
 
 
-def handler_count(update, context):
+def handler_count(update, _):
     """Показывает счет."""
     count = str(db_counter.get(update.message.from_user.id), 'utf-8')
     update.message.reply_text(
@@ -69,7 +78,7 @@ def handler_count(update, context):
     return ANSWER
 
 
-def cancel(update, context):
+def cancel(update, _):
     count = db_counter.get(update.message.from_user.id)
     update.message.reply_text(
         f"Спасибо, за участие в Викторине! Ваш счет: {count}",
@@ -131,7 +140,7 @@ if __name__ == '__main__':
     db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_USER'))
     db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_COUNTER'))
     db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
-    questions = questions.Quiz(db_questions)
+    quiz = questions.Quiz(db_questions)
     QUESTIONS = 1
     ANSWER = 2
     main()

@@ -13,7 +13,7 @@ class BaseFormatStrategy(ABC):
         pass
 
     @abstractmethod
-    def extract_question_answer(self,text) -> dict:
+    def extract_question_answer(self, text) -> dict:
         pass
 
 
@@ -44,6 +44,12 @@ class FormatStrategy(BaseFormatStrategy):
         return cd
 
 
+def __get_default_format_strategy__():
+    fs = FormatStrategy(block_splitter='\n\n',
+                        start_question="Вопрос \d+:", start_answer='Ответ:')
+    return fs
+
+
 class Quiz:
     def __init__(self, redis_db: redis.Redis):
         self.redis_db = redis_db
@@ -67,28 +73,35 @@ class Quiz:
         Добавляет вопросы из файла в БД
         :param file_name: Имя файла
         :param encoding: Кодировка
+        :param format_strategy: Стратегия форматирования
         :return: None
         """
         with open(file_name, 'r', encoding=encoding) as f:
             quizes = f.read()
         if not format_strategy:
-            format_strategy = self.__get_default_format_strategy__()
+            format_strategy = __get_default_format_strategy__()
         cd = format_strategy.extract_question_answer(quizes)
         if cd:
-           self.redis_db.mset(cd)
+            self.redis_db.mset(cd)
 
-    def add_questions_from_directory(self, directory_name, encoding='KOI8-R',
-                                     format_strategy: BaseFormatStrategy = None):
+    def add_questions_from_directory(
+            self,
+            directory_name, encoding='KOI8-R',
+            format_strategy: BaseFormatStrategy = None):
         """
         Добавляет вопросы из директории в БД
         :param directory_name: Имя директории
         :param encoding: Кодировка
+        :param format_strategy: Стратегия форматирования
         :return: None
         """
         for file_name in os.listdir(directory_name):
             if os.path.isfile(os.path.join(directory_name, file_name)):
                 full_path = os.path.join(directory_name, file_name)
-                self.add_questions_from_file(full_path, encoding=encoding, format_strategy=format_strategy)
+                self.add_questions_from_file(
+                    full_path,
+                    encoding=encoding,
+                    format_strategy=format_strategy)
 
     def get_question_answer(self, question):
         return str(self.redis_db.get(question), 'utf-8')
@@ -96,30 +109,28 @@ class Quiz:
     def get_random_question(self) -> str:
         return str(self.redis_db.randomkey(), 'utf-8')
 
-    def __get_default_format_strategy__(self):
-        fs = FormatStrategy(block_splitter='\n\n', start_question='Вопрос \d+:', start_answer='Ответ:')
-        return fs
-
 
 if __name__ == '__main__':
     load_dotenv()
     db = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
-    questions = Quiz(db)
+    quiz = Quiz(db)
+    description = ('Работа с базой данных с вопросами. \n'
+                   'Добавляет вопросы из файла или директории.\n'
+                   'Необходимо указать параметр '
+                   '-f (иммеет приоритет выше) или '
+                   '-d для запуска')
     parser = argparse.ArgumentParser(
-        description='Работа с базой данных с вопросами. \n Добавляет вопросы из файла или директории.\n'
-                    'Необходимо указать параметр -f (иммеет приоритет выше) или -d для запуска'
+        description=description
     )
     parser.add_argument('-f', '--file', type=str, help='Имя файла')
     parser.add_argument('-d', '--directory', type=str, help='Имя директории')
     args = parser.parse_args()
     if args.file:
-        questions.add_questions_from_file(args.file)
+        quiz.add_questions_from_file(args.file)
         print("Вопросы добавлены.")
     elif args.directory:
-        questions.add_questions_from_directory(args.directory)
+        quiz.add_questions_from_directory(args.directory)
         print("Вопросы добавлены.")
     else:
         print("Ошибка: Не указано ни имя файла, ни имя директории.")
         parser.print_help()
-
-
