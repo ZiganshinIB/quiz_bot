@@ -26,7 +26,7 @@ def get_keyboard():
     return keyboard.get_keyboard()
 
 
-def start(event):
+def start(event, db_counter):
     """Запускает новую викторину.
 
     Обнуляет количество правильных ответов."""
@@ -39,7 +39,7 @@ def start(event):
     )
 
 
-def send_question(event):
+def send_question(event, quiz, db_user):
     """Возвращает рандомный вопрос и выдает его пользователю."""
     question = quiz.get_random_question()
     db_user.set(event.user_id, question)
@@ -51,7 +51,7 @@ def send_question(event):
     )
 
 
-def check_answer(event):
+def check_answer(event, quiz, db_user, db_counter):
     """Проверяет данный пользователем ответ на правильность."""
 
     if event.text.lower() == quiz.get_question_answer(
@@ -74,7 +74,7 @@ def check_answer(event):
     )
 
 
-def report_correct_answer(event, vk_api):
+def report_correct_answer(event, quiz, db_user):
     """
     Сообщает пользователю правильный ответ,
     при нажатии на кнопку 'Сдаться'.
@@ -88,7 +88,7 @@ def report_correct_answer(event, vk_api):
     send_question(event)
 
 
-def get_number_points(event):
+def get_number_points(event, db_counter):
     """Выдает количетсво правильных ответов в текущей викторине."""
     return vk_api.messages.send(
         user_id=event.user_id,
@@ -101,7 +101,7 @@ def get_number_points(event):
 
 def main():
     load_dotenv()
-    global db_user, db_counter, quiz, vk_api
+    global vk_api
     db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_USER'))
     db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_COUNTER'))
     db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
@@ -118,15 +118,15 @@ def main():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
             try:
                 if event.text == "Начать":
-                    start(event)
+                    start(event, db_counter)
                 elif event.text == "Новый вопрос":
-                    send_question(event)
+                    send_question(event, quiz, db_user)
                 elif event.text == "Сдаться":
-                    report_correct_answer(event, vk_api)
+                    report_correct_answer(event, quiz, db_user)
                 elif event.text == "Мой счёт":
-                    get_number_points(event)
+                    get_number_points(event, db_counter)
                 else:
-                    check_answer(event)
+                    check_answer(event, quiz, db_user, db_counter)
             except Exception as err:
                 logger.error(
                     "Бот VK перестал работать: " + str(err),
