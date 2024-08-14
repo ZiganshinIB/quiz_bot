@@ -99,8 +99,9 @@ def get_number_points(event):
     )
 
 
-if __name__ == "__main__":
+def main():
     load_dotenv()
+    global db_user, db_counter, quiz, vk_api
     db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_USER'))
     db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_VK_COUNTER'))
     db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
@@ -130,3 +131,7 @@ if __name__ == "__main__":
                 logger.error(
                     "Бот VK перестал работать: " + str(err),
                     exc_info=True)
+
+
+if __name__ == "__main__":
+    main()

@@ -90,6 +90,14 @@ def cancel(update, _):
 
 
 def main():
+    load_dotenv()
+    global db_user, db_counter, quiz, QUESTIONS, ANSWER
+    db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_USER'))
+    db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_COUNTER'))
+    db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
+    quiz = questions.Quiz(db_questions)
+    QUESTIONS = 1
+    ANSWER = 2
     tg_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
     tg_log_chat_id = os.getenv('TELEGRAM_BOT_LOGS_CHAT_ID')
     updater = Updater(tg_bot_token)
@@ -136,11 +144,4 @@ def main():
 
 
 if __name__ == '__main__':
-    load_dotenv()
-    db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_USER'))
-    db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_COUNTER'))
-    db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
-    quiz = questions.Quiz(db_questions)
-    QUESTIONS = 1
-    ANSWER = 2
     main()
