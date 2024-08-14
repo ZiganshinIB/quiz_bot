@@ -34,7 +34,7 @@ def start(update: Update, _):
     return QUESTIONS
 
 
-def handler_new_question_request(update: Update, _):
+def handler_new_question_request(update: Update, context, db_user, quiz):
     question = quiz.get_random_question()
     db_user.set(update.message.from_user.id, question)
     update.message.reply_text(f"{question}")
@@ -55,7 +55,7 @@ def handler_solution(update, _):
     return ANSWER
 
 
-def handler_give_up(update, _):
+def handler_give_up(update, context, db_user, quiz):
     """Показывает правильный ответ."""
     answer = quiz.get_question_answer(db_user.get(update.message.from_user.id))
     update.message.reply_text(
@@ -68,7 +68,7 @@ def handler_give_up(update, _):
     return ANSWER
 
 
-def handler_count(update, _):
+def handler_count(update, context, db_counter):
     """Показывает счет."""
     count = str(db_counter.get(update.message.from_user.id), 'utf-8')
     update.message.reply_text(
@@ -91,7 +91,7 @@ def cancel(update, _):
 
 def main():
     load_dotenv()
-    global db_user, db_counter, quiz, QUESTIONS, ANSWER
+    global QUESTIONS, ANSWER
     db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_USER'))
     db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_COUNTER'))
     db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
@@ -100,6 +100,15 @@ def main():
     ANSWER = 2
     tg_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
     tg_log_chat_id = os.getenv('TELEGRAM_BOT_LOGS_CHAT_ID')
+    new_question_request = lambda update, context: handler_new_question_request(
+        update, context, db_user, quiz
+    )
+    send_count = lambda update, context: handler_count(
+        update, context, db_counter
+    )
+    give_up_question = lambda update, context: handler_give_up(
+        update, context, db_user, quiz
+    )
     updater = Updater(tg_bot_token)
     dispatcher = updater.dispatcher
     conv_handler = ConversationHandler(
@@ -107,21 +116,21 @@ def main():
         states={
             QUESTIONS: [
                 MessageHandler(
-                    Filters.text("Новый вопрос"), handler_new_question_request
+                    Filters.text("Новый вопрос"), new_question_request
                 ),
                 MessageHandler(
-                    Filters.text("Мои счет"), handler_count
+                    Filters.text("Мои счет"), send_count
                 ),
             ],
             ANSWER: [
                 MessageHandler(
-                    Filters.text("Новый вопрос"), handler_give_up
+                    Filters.text("Новый вопрос"), give_up_question
                 ),
                 MessageHandler(
-                    Filters.text("Сдаться"), handler_give_up
+                    Filters.text("Сдаться"), give_up_question
                 ),
                 MessageHandler(
-                    Filters.text("Мои счет"), handler_count
+                    Filters.text("Мои счет"), send_count
                 ),
                 MessageHandler(
                     Filters.text, handler_solution
