@@ -13,6 +13,8 @@ from logger import MyLogsHandler
 
 logger = logging.getLogger(__name__)
 
+QUESTIONS, ANSWER = 1, 2
+
 
 def get_keyboard():
     """Добавляет кнопки боту."""
@@ -23,7 +25,7 @@ def get_keyboard():
     return keyboard
 
 
-def start(update: Update, _):
+def handler_start(update: Update, _, db_counter):
     """Start the bot."""
     db_counter.set(update.message.from_user.id, 0)
     msg = ("Привет! Я бот для викторин! "
@@ -41,7 +43,7 @@ def handler_new_question_request(update: Update, context, db_user, quiz):
     return ANSWER
 
 
-def handler_solution(update, _):
+def handler_solution(update, _, db_counter, db_user, quiz):
     """Проверяет правильность ответа на вопрос."""
     answer = quiz.get_question_answer(db_user.get(update.message.from_user.id))
     if update.message.text.lower() == answer.lower():
@@ -78,7 +80,7 @@ def handler_count(update, context, db_counter):
     return ANSWER
 
 
-def cancel(update, _):
+def handler_cancel(update, _, db_counter, db_user):
     count = db_counter.get(update.message.from_user.id)
     update.message.reply_text(
         f"Спасибо, за участие в Викторине! Ваш счет: {count}",
@@ -91,15 +93,14 @@ def cancel(update, _):
 
 def main():
     load_dotenv()
-    global QUESTIONS, ANSWER
+
     db_user = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_USER'))
     db_counter = redis.Redis.from_url(os.getenv('REDIS_URL_DB_TG_COUNTER'))
     db_questions = redis.Redis.from_url(os.getenv('REDIS_URL_DB_QUESTIONS'))
     quiz = questions.Quiz(db_questions)
-    QUESTIONS = 1
-    ANSWER = 2
     tg_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
     tg_log_chat_id = os.getenv('TELEGRAM_BOT_LOGS_CHAT_ID')
+    start = lambda update, context: handler_start(update, context, db_counter)
     new_question_request = lambda update, context: handler_new_question_request(
         update, context, db_user, quiz
     )
@@ -108,6 +109,12 @@ def main():
     )
     give_up_question = lambda update, context: handler_give_up(
         update, context, db_user, quiz
+    )
+    solution = lambda update, context: handler_solution(
+        update, context, db_counter, db_user, quiz
+    )
+    cancel = lambda update, context: handler_cancel(
+        update, context, db_counter, db_user
     )
     updater = Updater(tg_bot_token)
     dispatcher = updater.dispatcher
@@ -133,7 +140,7 @@ def main():
                     Filters.text("Мои счет"), send_count
                 ),
                 MessageHandler(
-                    Filters.text, handler_solution
+                    Filters.text, solution
                 ),
             ],
 
